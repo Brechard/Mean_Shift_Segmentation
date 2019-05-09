@@ -5,7 +5,7 @@ from scipy.spatial.distance import cdist
 
 def get_distances(data, point):
     """ Calculate the distance between the data set and a specific point """
-    return cdist(data, point.reshape((-1, 1)).T)[:, 0]
+    return cdist(data.T, point.reshape((-1, 1)).T)[:, 0]
 
 
 def calc_mean_and_basin(data, point, r, c):
@@ -18,7 +18,7 @@ def calc_mean_and_basin(data, point, r, c):
     :return: mean point, basin of attraction
     """
     distances = get_distances(data, point)
-    mean_point = np.mean(data[distances < r, :], axis=0)
+    mean_point = np.mean(data[:, distances < r], axis=1)
 
     distances_to_mean = get_distances(data, mean_point)
     basin_of_attraction = np.argwhere(distances_to_mean < r / c)[:, 0]
