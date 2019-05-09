@@ -116,3 +116,6 @@ dmypy.json
 # PyCharm
 venv/
 .idea
+
+# Image folder
+img/
