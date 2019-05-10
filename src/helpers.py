@@ -26,7 +26,7 @@ def calc_mean_and_basin(data, point, r, c):
     return mean_point, basin_of_attraction
 
 
-def plot_clusters_3d(data, labels, peaks, r):
+def plot_clusters_3d(data, labels, peaks, title):
     """
     Plots the modes of the given image data in 3D by coloring each pixel
     according to its corresponding peak.
@@ -35,7 +35,7 @@ def plot_clusters_3d(data, labels, peaks, r):
         labels: a list of labels, one for each pixel.
         peaks: a list of vectors, whose first three components can
         be interpreted as RGB values.
-        r: radius used for the clustering
+        title: title for the plot
     """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
@@ -45,6 +45,7 @@ def plot_clusters_3d(data, labels, peaks, r):
         cluster = data[np.where(labels == idx)[0]].T
         ax.scatter(cluster[0], cluster[1], cluster[2], c=[colors[idx]], s=.5, label="Group =" + str(idx))
 
-    plt.title("radius = " + str(r))
+    plt.title(title)
     plt.legend(markerscale=10)
+
     plt.show()

@@ -1,8 +1,10 @@
-import cv2
 import scipy.io
 from scipy.spatial.distance import pdist
 from mpl_toolkits.mplot3d import Axes3D
 from helpers import *
+from skimage.color import lab2rgb, rgb2lab
+from tqdm import tqdm
+import time
 
 
 def plot_data(data_by_types):
@@ -83,7 +85,7 @@ def mean_shift_opt(data, r, c, make_5d, opt):
 
     peaks = []
     iterations = 0
-    for i in range(n_pixels):
+    for i in tqdm(range(n_pixels)):
         if labels[i] != -1:
             continue
 
@@ -113,23 +115,24 @@ def mean_shift_opt(data, r, c, make_5d, opt):
                 labels[list(ids_in_region)] = 0
 
     # data_grouped = None
+    used = round(100 * iterations / n_pixels, 2)
     print("Total number of pixels:", n_pixels, ". Finished after", iterations, "iterations ->",
           round(100 * iterations / n_pixels, 2), "%")
 
     if np.min(peaks) == 1:
         raise Exception("A pixel has not been assigned a group")
 
-    return labels, np.array(peaks)
+    return labels, np.array(peaks), [str(n_pixels), str(used)]
 
 
 def debug_algorithm():
     data = scipy.io.loadmat('../pts.mat')['data']
-    labels, peaks = mean_shift_opt(data, 2, 4, False, False)
+    labels, peaks, _ = mean_shift_opt(data, 2, 4, False, False)
     data_grouped = [data[:, labels == group] for group in range(len(peaks))]
     plot_data(data_grouped)
 
 
-def im_segmentation(im, r, c, make_5d, opt):
+def im_segmentation(im, r, c, make_5d, opt, title):
     """
     Segmentation applied to an image using mean-shift
     :param im: RGB of the image
@@ -137,12 +140,11 @@ def im_segmentation(im, r, c, make_5d, opt):
     :param c: window radius for basin of attraction
     :param make_5d: flag to add position to the data for segmentation
     :param opt: flag to use optimization techniques
+    :param title: title for the resulting image
     :return: labels, peaks, data grouped
     """
-    plt.imshow(im)
-    plt.show()
 
-    colors = cv2.cvtColor(im, cv2.COLOR_RGB2LAB)
+    colors = rgb2lab(im)
 
     if make_5d:
         colors_5d = np.zeros((colors.shape[0], colors.shape[1], 5))
@@ -153,7 +155,7 @@ def im_segmentation(im, r, c, make_5d, opt):
 
     colors_reshaped = colors.reshape((colors.shape[0] * colors.shape[1], colors.shape[2])).T
 
-    labels, peaks = mean_shift_opt(colors_reshaped, r, c, make_5d, opt)
+    labels, peaks, performance = mean_shift_opt(colors_reshaped, r, c, make_5d, opt)
 
     for i, peak in enumerate(peaks):
         peaks[i] = [int(value) for value in peak]
@@ -162,30 +164,57 @@ def im_segmentation(im, r, c, make_5d, opt):
     for i, pixel in enumerate(colors_reshaped):
         colors_reshaped[i] = peaks[int(labels[i])]
 
-    segmented = colors_reshaped.reshape(colors.shape)[:, :, :3].astype(np.uint8)
-
-    segmented = cv2.cvtColor(segmented, cv2.COLOR_LAB2RGB)
+    segmented = lab2rgb(colors_reshaped.reshape(colors.shape)[:, :, :3])
+    peaks = lab2rgb([peaks])[0, :, :]
 
     plt.imshow(segmented)
-    plt.title("radius = " + str(r))
+    plt.title(title)
+    plt.savefig("../result_imgs/" + title.replace(" = ", "-").replace(". ", "_"))
     plt.show()
 
-    return labels, peaks
+    print("The peaks colors are:", peaks)
+
+    return labels, peaks, performance
 
 
 def study_image(img_path, r, c, make_5d, opt):
-    # Load image
-    img_rgb = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
+    start = time.time()
 
-    labels, peaks = im_segmentation(img_rgb.copy(), r, c, make_5d, opt)
-    plot_clusters_3d(img_rgb.reshape((img_rgb.shape[0] * img_rgb.shape[1], img_rgb.shape[2])), labels, peaks, r)
+    # Load and show image
+    img_rgb = plt.imread(img_path)
+    plt.imshow(img_rgb)
+    plt.show()
+
+    title = "radius = " + str(r) + ". c = " + str(c) \
+            + ". 5d = " + ("Yes" if make_5d else "No") \
+            + ". opt = " + ("Yes" if opt else "No")
+
+    labels, peaks, performance = im_segmentation(img_rgb.copy(), r, c, make_5d, opt, title)
+    plot_clusters_3d(img_rgb.reshape((img_rgb.shape[0] * img_rgb.shape[1], img_rgb.shape[2])), labels, peaks, title)
+    end = time.time()
+    minutes = int(end - start)
+    text = "Image " + img_path + " finished processing." + title + \
+           ". Took " + str(minutes) + ":" + str(end - 60 * minutes) + " minutes." \
+           + ". Pixels = " + performance[0] + ", number of iterations done = " + performance[1]
+
+    with open("Output.txt", "a") as text_file:
+        print(f'{text}', file=text_file)
 
 
-debug_algorithm()
+# debug_algorithm()
 
-# study_image('../img/55075.jpg', 50, 2, True)
-study_image('../img/181091.jpg', 100, 1, True)
-study_image('../img/368078.jpg', 50, 2, False)
+study_image('../img/55075.jpg', 2, 4, make_5d=False, opt=False)
+study_image('../img/55075.jpg', 2, 4, make_5d=False, opt=True)
+study_image('../img/55075.jpg', 2, 4, make_5d=True, opt=False)
+study_image('../img/55075.jpg', 2, 4, make_5d=True, opt=True)
 
+study_image('../img/181091.jpg', 5, 2, make_5d=False, opt=False)
+study_image('../img/181091.jpg', 5, 2, make_5d=False, opt=True)
+study_image('../img/181091.jpg', 5, 2, make_5d=True, opt=False)
+study_image('../img/181091.jpg', 5, 2, make_5d=True, opt=True)
 
-# plot_data(data_grouped)
+study_image('../img/368078.jpg', 10, 4, make_5d=False, opt=False)
+study_image('../img/368078.jpg', 10, 4, make_5d=False, opt=True)
+study_image('../img/368078.jpg', 10, 4, make_5d=True, opt=False)
+study_image('../img/368078.jpg', 10, 4, make_5d=True, opt=True)
+
