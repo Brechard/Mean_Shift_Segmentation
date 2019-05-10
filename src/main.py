@@ -17,78 +17,7 @@ def plot_data(data_by_types):
     plt.show()
 
 
-def find_peak(data, idx, r):
-    """
-    Define a spherical window at the data point of radius r and computing the mean of the points that lie within the
-    window. Then shifts the window to the mean and repeats until convergence (the shift is under some threshold t).
-
-    :param data: n-dimensional dataset containing p points
-    :param idx: index of the point we wish to calculate its associated density peak
-    :param r: search window radius
-    :return: peak point
-    """
-
-    point = data[:, idx]
-    mean_point, _ = calc_mean_and_basin(data, point, r, 4)
-
-    while pdist(np.array([point, mean_point])) > 0.01:
-        point = mean_point
-        mean_point, _ = calc_mean_and_basin(data, point, r, 4)
-
-    # print("mean_point", mean_point)
-    return np.array(mean_point)
-
-
-def mean_shift(data, r):
-    """
-    Calculate mean shift
-    :param data: n-dimensional dataset containing p points
-    :param r: search window radius
-    :return: labels, peaks, data grouped in labels
-    """
-
-    n_points = data.shape[1]
-    # The label -1 means that is has no class
-    labels = np.zeros(n_points) - np.ones(n_points)
-
-    # Peaks contains the index of the point, therefore we start all as -1
-    # peaks = np.zeros(n_points) - np.ones(n_points)
-
-    peaks = []
-    iterations = 0
-    for i in range(n_points):
-        if labels[i] != -1:
-            continue
-
-        iterations += 1
-        peak = find_peak(data, i, r)
-        if len(peaks) > 0:
-            similarity = cdist(np.array(peaks), np.array([peak]))
-            similar_peak = np.argwhere(similarity < r / 2)
-
-            if len(similar_peak) > 0:
-                labels[i] = similar_peak[0, 0]
-                continue
-            else:
-                print("New peak", peak)
-                labels[i] = int(len(peaks))
-                peaks.append(peak)
-        else:
-            print("First peak", peak)
-            peaks.append(peak)
-            labels[i] = 0
-
-    data_grouped = [data[:, labels == group] for group in range(len(peaks))]
-
-    print("Mean shit without optimization done")
-
-    if np.min(peaks) == 1:
-        raise Exception("A pixel has not been assigned a group")
-
-    return labels, np.array(peaks), data_grouped
-
-
-def find_peak_opt(data, idx, r, c):
+def find_peak_opt(data, idx, r, c, make_5d, opt):
     """
     Define a spherical window at the data point of radius r and computing the mean of the points that lie within the
     window. Then shifts the window to the mean and repeats until convergence (the shift is under some threshold t).
@@ -101,32 +30,46 @@ def find_peak_opt(data, idx, r, c):
     :param idx: index of the point we wish to calculate its associated density peak
     :param r: search window radius
     :param c: window radius for basin of attraction
+    :param make_5d: flag to add position to the data for segmentation
+    :param opt: flag to use optimization techniques
     :return: mean point, ids of the point inside
     """
 
     point = data[:, idx]
     mean_point, basin_of_attraction = calc_mean_and_basin(data, point, r, c)
 
-    # Creating a set ensures that the values inside appear only once
-    ids_in_region = set(basin_of_attraction)
+    if opt:
+        # Creating a set ensures that the values inside appear only once
+        ids_in_region = set(basin_of_attraction)
+    else:
+        ids_in_region = False
 
-    while pdist(np.array([point, mean_point])) > 0.01:
+    threshold = 0.01
+
+    if make_5d:
+        threshold *= 100
+
+    while pdist(np.array([point, mean_point])) > threshold:
         point = mean_point
         mean_point, basin_of_attraction = calc_mean_and_basin(data, point, r, 4)
-        ids_in_region.update(basin_of_attraction)
+        if opt:
+            ids_in_region.update(basin_of_attraction)
 
-    _, basin_of_attraction = calc_mean_and_basin(data, point, r, 1)
-    ids_in_region.update(basin_of_attraction)
+    if opt:
+        _, basin_of_attraction = calc_mean_and_basin(data, point, r, 1)
+        ids_in_region.update(basin_of_attraction)
 
     return np.array(mean_point), ids_in_region
 
 
-def mean_shift_opt(data, r, c):
+def mean_shift_opt(data, r, c, make_5d, opt):
     """
     Calculate mean shift
     :param data: n-dimensional dataset containing p points
     :param r: search window radius
     :param c: window radius for basin of attraction
+    :param make_5d: flag to add position to the data for segmentation
+    :param opt: flag to use optimization techniques
     :return: labels, peaks, data grouped in labels
     """
 
@@ -145,49 +88,55 @@ def mean_shift_opt(data, r, c):
             continue
 
         iterations += 1
-        peak, ids_in_region = find_peak_opt(data, i, r, c)
+        peak, ids_in_region = find_peak_opt(data, i, r, c, make_5d, opt)
         if len(peaks) > 0:
             similarity = cdist(np.array(peaks), np.array([peak]))
             similar_peak = np.argwhere(similarity < r / 2)
 
             if len(similar_peak) > 0:
                 labels[i] = similar_peak[0, 0]
-                labels[list(ids_in_region)] = similar_peak[0, 0]
+                if opt:
+                    labels[list(ids_in_region)] = similar_peak[0, 0]
+                # print("i", i, "total", n_pixels)
                 continue
             else:
                 print("New peak", peak)
                 labels[i] = int(len(peaks))
-                labels[list(ids_in_region)] = int(len(peaks))
+                if opt:
+                    labels[list(ids_in_region)] = int(len(peaks))
                 peaks.append(peak)
         else:
             print("First peak", peak)
             peaks.append(peak)
             labels[i] = 0
-            labels[list(ids_in_region)] = 0
+            if opt:
+                labels[list(ids_in_region)] = 0
 
-    # data_grouped = [data[labels == group, :] for group in range(len(peaks))]
-    data_grouped = None
+    # data_grouped = None
     print("Total number of pixels:", n_pixels, ". Finished after", iterations, "iterations ->",
           round(100 * iterations / n_pixels, 2), "%")
 
     if np.min(peaks) == 1:
         raise Exception("A pixel has not been assigned a group")
 
-    return labels, np.array(peaks), data_grouped
+    return labels, np.array(peaks)
 
 
 def debug_algorithm():
     data = scipy.io.loadmat('../pts.mat')['data']
-    labels, peaks, data_grouped = mean_shift(data, 2)
+    labels, peaks = mean_shift_opt(data, 2, 4, False, False)
+    data_grouped = [data[:, labels == group] for group in range(len(peaks))]
     plot_data(data_grouped)
 
 
-def im_segmentation(im, r, c, make_5d):
+def im_segmentation(im, r, c, make_5d, opt):
     """
     Segmentation applied to an image using mean-shift
     :param im: RGB of the image
     :param r: radius for the segmentation
     :param c: window radius for basin of attraction
+    :param make_5d: flag to add position to the data for segmentation
+    :param opt: flag to use optimization techniques
     :return: labels, peaks, data grouped
     """
     plt.imshow(im)
@@ -204,7 +153,7 @@ def im_segmentation(im, r, c, make_5d):
 
     colors_reshaped = colors.reshape((colors.shape[0] * colors.shape[1], colors.shape[2])).T
 
-    labels, peaks, data_grouped = mean_shift_opt(colors_reshaped, r, c)
+    labels, peaks = mean_shift_opt(colors_reshaped, r, c, make_5d, opt)
 
     for i, peak in enumerate(peaks):
         peaks[i] = [int(value) for value in peak]
@@ -213,7 +162,7 @@ def im_segmentation(im, r, c, make_5d):
     for i, pixel in enumerate(colors_reshaped):
         colors_reshaped[i] = peaks[int(labels[i])]
 
-    segmented = colors_reshaped.reshape(colors.shape)[:, :, :3]
+    segmented = colors_reshaped.reshape(colors.shape)[:, :, :3].astype(np.uint8)
 
     segmented = cv2.cvtColor(segmented, cv2.COLOR_LAB2RGB)
 
@@ -221,14 +170,14 @@ def im_segmentation(im, r, c, make_5d):
     plt.title("radius = " + str(r))
     plt.show()
 
-    return labels, peaks, data_grouped
+    return labels, peaks
 
 
-def study_image(img_path, r, c, make_5d):
+def study_image(img_path, r, c, make_5d, opt):
     # Load image
     img_rgb = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
 
-    labels, peaks, data_grouped = im_segmentation(img_rgb.copy(), r, c, make_5d)
+    labels, peaks = im_segmentation(img_rgb.copy(), r, c, make_5d, opt)
     plot_clusters_3d(img_rgb.reshape((img_rgb.shape[0] * img_rgb.shape[1], img_rgb.shape[2])), labels, peaks, r)
 
 
