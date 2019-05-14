@@ -46,6 +46,17 @@ def plot_clusters_3d(data, labels, peaks, title):
         ax.scatter(cluster[0], cluster[1], cluster[2], c=[colors[idx]], s=.5, label="Group =" + str(idx))
 
     plt.title(title)
-    plt.legend(markerscale=10)
-
+    # plt.legend(markerscale=10)
+    plt.savefig("../result_imgs/cluster_" + title.replace(" = ", "-").replace(". ", "_"))
     plt.show()
+
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection="3d")
+    # for idx, peak in enumerate(peaks):
+    #     cluster = data[np.where(labels == idx)[0]].T
+    #     ax.scatter(cluster[0], cluster[1], cluster[2], c=[colors[idx]], s=.5, label="Group =" + str(idx))
+    #
+    # plt.title(title)
+    # plt.savefig("../result_imgs/cluster_no_label_" + title.replace(" = ", "-").replace(". ", "_"))
+    # plt.show()
+

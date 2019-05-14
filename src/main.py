@@ -1,10 +1,12 @@
+import time
+
 import scipy.io
 from scipy.spatial.distance import pdist
-from mpl_toolkits.mplot3d import Axes3D
-from helpers import *
 from skimage.color import lab2rgb, rgb2lab
+from mpl_toolkits.mplot3d import Axes3D
 from tqdm import tqdm
-import time
+
+from helpers import *
 
 
 def plot_data(data_by_types):
@@ -165,7 +167,9 @@ def im_segmentation(im, r, c, make_5d, opt, title):
         colors_reshaped[i] = peaks[int(labels[i])]
 
     segmented = lab2rgb(colors_reshaped.reshape(colors.shape)[:, :, :3])
-    peaks = lab2rgb([peaks])[0, :, :]
+    peaks = lab2rgb([peaks[:, :3]])[0, :, :]
+
+    title += ". Peaks = " + str(len(peaks))
 
     plt.imshow(segmented)
     plt.title(title)
@@ -186,16 +190,21 @@ def study_image(img_path, r, c, make_5d, opt):
     plt.show()
 
     title = "radius = " + str(r) + ". c = " + str(c) \
-            + ". 5d = " + ("Yes" if make_5d else "No") \
-            + ". opt = " + ("Yes" if opt else "No")
+            + ". Dim = " + ("5D" if make_5d else "3D") \
+            + ". Opt = " + ("Yes" if opt else "No")
 
     labels, peaks, performance = im_segmentation(img_rgb.copy(), r, c, make_5d, opt, title)
-    plot_clusters_3d(img_rgb.reshape((img_rgb.shape[0] * img_rgb.shape[1], img_rgb.shape[2])), labels, peaks, title)
+
+    title += ". Peaks = " + str(len(peaks))
+
+    plot_clusters_3d(img_rgb.reshape((img_rgb.shape[0] * img_rgb.shape[1], img_rgb.shape[2])), labels, peaks,
+                     title)
     end = time.time()
-    minutes = int(end - start)
+    minutes = int((end - start) / 60)
     text = "Image " + img_path + " finished processing." + title + \
-           ". Took " + str(minutes) + ":" + str(end - 60 * minutes) + " minutes." \
-           + ". Pixels = " + performance[0] + ", number of iterations done = " + performance[1]
+           ". Took " + str(minutes) + ":" + str(round(end - start - 60 * minutes)) + " minutes" \
+           + ". Pixels = " + performance[0] + ", number of iterations done = " + performance[1] + \
+           "%"
 
     with open("Output.txt", "a") as text_file:
         print(f'{text}', file=text_file)
@@ -203,18 +212,13 @@ def study_image(img_path, r, c, make_5d, opt):
 
 # debug_algorithm()
 
-study_image('../img/55075.jpg', 2, 4, make_5d=False, opt=False)
-study_image('../img/55075.jpg', 2, 4, make_5d=False, opt=True)
-study_image('../img/55075.jpg', 2, 4, make_5d=True, opt=False)
-study_image('../img/55075.jpg', 2, 4, make_5d=True, opt=True)
+study_image('../img/368078.jpg', 20, 4, make_5d=False, opt=True)
+study_image('../img/368078.jpg', 20, 4, make_5d=False, opt=False)
+study_image('../img/368078.jpg', 20, 4, make_5d=True, opt=True)
+study_image('../img/368078.jpg', 20, 4, make_5d=True, opt=False)
 
-study_image('../img/181091.jpg', 5, 2, make_5d=False, opt=False)
-study_image('../img/181091.jpg', 5, 2, make_5d=False, opt=True)
-study_image('../img/181091.jpg', 5, 2, make_5d=True, opt=False)
-study_image('../img/181091.jpg', 5, 2, make_5d=True, opt=True)
+study_image('../img/181091.jpg', 10, 4, make_5d=False, opt=True)
+study_image('../img/181091.jpg', 10, 2, make_5d=False, opt=True)
 
-study_image('../img/368078.jpg', 10, 4, make_5d=False, opt=False)
-study_image('../img/368078.jpg', 10, 4, make_5d=False, opt=True)
-study_image('../img/368078.jpg', 10, 4, make_5d=True, opt=False)
-study_image('../img/368078.jpg', 10, 4, make_5d=True, opt=True)
-
+study_image('../img/55075.jpg', 5, 4, make_5d=False, opt=True)
+study_image('../img/55075.jpg', 5, 4, make_5d=True, opt=True)
