@@ -119,3 +119,5 @@ venv/
 
 # Image folder
 img/
+result_imgs/
+src/Output.txt

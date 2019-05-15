@@ -8,6 +8,8 @@ from tqdm import tqdm
 
 from helpers import *
 
+iterations = 0
+
 
 def plot_data(data_by_types):
     """ Show a scatter plot of the data by type, the first dimension groups per type """
@@ -53,7 +55,10 @@ def find_peak_opt(data, idx, r, c, make_5d, opt):
     if make_5d:
         threshold *= 100
 
+    global iterations
+
     while pdist(np.array([point, mean_point])) > threshold:
+        iterations += 1
         point = mean_point
         mean_point, basin_of_attraction = calc_mean_and_basin(data, point, r, 4)
         if opt:
@@ -178,39 +183,83 @@ def im_segmentation(im, r, c, make_5d, opt, title):
 
     # print("The peaks colors are:", peaks)
 
-    return labels, peaks, performance
+    return labels, peaks, performance, segmented
 
 
-def study_image(img_path, r, c, make_5d, opt):
+def study_image(img_path, r, c, make_5d, opt, plot_3d=True, save_stats=True):
+    """
+    Study an image applying the mean shift algorithm
+    :param img_path: string path of the image
+    :param r: radius for the mean shift
+    :param c: constant for the speed-up technique
+    :param make_5d: Flag to use 5 dimensions or 3
+    :param opt: Flag to use the speed-up techniques
+    :param plot_3d: Flag to plot the 3D cluster
+    :param save_stats: Flag to save the statistics
+    :return: segmented image in rgb
+    """
+    global iterations
+    iterations = 0
     start = time.time()
 
     # Load and show image
     img_rgb = plt.imread(img_path)
-    plt.imshow(img_rgb)
-    plt.show()
+    # plt.imshow(img_rgb)
+    # plt.show()
 
     title = "radius = " + str(r) + ". c = " + str(c) \
             + ". Dim = " + ("5D" if make_5d else "3D") \
             + ". Opt = " + ("Yes" if opt else "No")
 
-    labels, peaks, performance = im_segmentation(img_rgb.copy(), r, c, make_5d, opt, title)
+    labels, peaks, performance, segmented = im_segmentation(img_rgb.copy(), r, c, make_5d, opt, title)
 
     title += ". Peaks = " + str(len(peaks))
 
-    plot_clusters_3d(img_rgb.reshape((img_rgb.shape[0] * img_rgb.shape[1], img_rgb.shape[2])), labels, peaks,
-                     title)
+    if plot_3d:
+        plot_clusters_3d(img_rgb.reshape((img_rgb.shape[0] * img_rgb.shape[1], img_rgb.shape[2])), labels, peaks,
+                         title)
+
     end = time.time()
     minutes = int((end - start) / 60)
+
     text = "Image " + img_path + " finished processing." + title + \
            ". Took " + str(minutes) + "m " + str(round(end - start - 60 * minutes)) + "s" \
            + ". Pixels = " + performance[0] + ", processed pixels = " + performance[1] + \
-           "%"
+           "%. Iterations = " + str(iterations)
+    if save_stats:
+        with open("Output.txt", "a") as text_file:
+            print(f'{text}', file=text_file)
 
-    with open("Output.txt", "a") as text_file:
-        print(f'{text}', file=text_file)
+    return segmented
+
+
+def compare_dimensions(img_path, r):
+    """
+    Segment the same image with the same radius and plot them to see the differences
+    :param img_path: path of the image to segment
+    :param r: array with the different radius to use
+    """
+    images = {}
+
+    for radius in r:
+        segmented = study_image(img_path, radius, 2, make_5d=True, opt=True, plot_3d=False, save_stats=True)
+        title = "r = " + str(radius)
+        images[title] = segmented
+    plot_dict(images)
+
+    images = {}
+    for radius in r:
+        segmented = study_image(img_path, radius, 2, make_5d=False, opt=True, plot_3d=False, save_stats=True)
+        title = "r = " + str(radius)
+        images[title] = segmented
+    plot_dict(images)
 
 
 # debug_algorithm()
+# compare_dimensions('../img/test_2.jpg', [10, 20, 30])
+
+study_image('../img/55075.jpg', 5, 4, make_5d=True, opt=True)
+study_image('../img/55075.jpg', 5, 4, make_5d=False, opt=True)
 
 study_image('../img/368078.jpg', 20, 4, make_5d=False, opt=True)
 study_image('../img/368078.jpg', 20, 4, make_5d=False, opt=False)
@@ -221,5 +270,3 @@ study_image('../img/181091.jpg', 10, 4, make_5d=False, opt=True)
 study_image('../img/181091.jpg', 10, 2, make_5d=False, opt=True)
 study_image('../img/181091.jpg', 10, 1, make_5d=False, opt=True)
 
-study_image('../img/55075.jpg', 5, 4, make_5d=False, opt=True)
-study_image('../img/55075.jpg', 5, 4, make_5d=True, opt=True)

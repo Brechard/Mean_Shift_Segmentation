@@ -1,3 +1,4 @@
+import math
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.distance import cdist
@@ -47,4 +48,16 @@ def plot_clusters_3d(data, labels, peaks, title):
     plt.title(title)
     # plt.legend(markerscale=10)
     plt.savefig("../result_imgs/cluster_" + title.replace(" = ", "-").replace(". ", "_"))
+    plt.show()
+
+
+def plot_dict(dictionary):
+    cols = len(dictionary)
+    i = 0
+    plt.figure()
+    for title, image in dictionary.items():
+        i += 1
+        plt.subplot(1, cols, i)
+        plt.imshow(image)
+        plt.title(title)
     plt.show()
