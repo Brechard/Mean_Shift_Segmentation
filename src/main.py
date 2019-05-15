@@ -176,7 +176,7 @@ def im_segmentation(im, r, c, make_5d, opt, title):
     plt.savefig("../result_imgs/" + title.replace(" = ", "-").replace(". ", "_"))
     plt.show()
 
-    print("The peaks colors are:", peaks)
+    # print("The peaks colors are:", peaks)
 
     return labels, peaks, performance
 
@@ -202,8 +202,8 @@ def study_image(img_path, r, c, make_5d, opt):
     end = time.time()
     minutes = int((end - start) / 60)
     text = "Image " + img_path + " finished processing." + title + \
-           ". Took " + str(minutes) + ":" + str(round(end - start - 60 * minutes)) + " minutes" \
-           + ". Pixels = " + performance[0] + ", number of iterations done = " + performance[1] + \
+           ". Took " + str(minutes) + "m " + str(round(end - start - 60 * minutes)) + "s" \
+           + ". Pixels = " + performance[0] + ", processed pixels = " + performance[1] + \
            "%"
 
     with open("Output.txt", "a") as text_file:
@@ -219,6 +219,7 @@ study_image('../img/368078.jpg', 20, 4, make_5d=True, opt=False)
 
 study_image('../img/181091.jpg', 10, 4, make_5d=False, opt=True)
 study_image('../img/181091.jpg', 10, 2, make_5d=False, opt=True)
+study_image('../img/181091.jpg', 10, 1, make_5d=False, opt=True)
 
 study_image('../img/55075.jpg', 5, 4, make_5d=False, opt=True)
 study_image('../img/55075.jpg', 5, 4, make_5d=True, opt=True)
