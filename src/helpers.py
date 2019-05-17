@@ -47,7 +47,7 @@ def plot_clusters_3d(data, labels, peaks, title):
 
     plt.title(title)
     # plt.legend(markerscale=10)
-    plt.savefig("../result_imgs/cluster_" + title.replace(" = ", "-").replace(". ", "_"))
+    # plt.savefig("../result_imgs/cluster_" + title.replace(" = ", "-").replace(". ", "_"))
     plt.show()
 
 
